@@ -1,43 +1,55 @@
 import streamlit as st
+import base64
+import os
 
 # 1. ページ設定
 st.set_page_config(page_title="赤ちゃんぷくぷく記録", page_icon="👶")
 
-# カスタムCSS：背景色と文字色のコントラストを改善
+# 画像をBase64で読み込む関数（確実に表示させるため）
+def get_image_base64(path):
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    return None
+
+# カスタムCSS：背景と文字のコントラストを調整
 st.markdown("""
     <style>
     .stApp {
-        background-color: #fff5f5; /* 薄いピンクの背景 */
+        background-color: #fff5f5;
     }
-    /* 全体の文字色を濃いグレーにして読みやすくする */
     .main .block-container {
-        color: #2c3e50;
+        color: #2c3e50; /* 濃いグレーで文字を読みやすく */
     }
-    /* タイトルとサブヘッダーの色を強調 */
-    h1, h2, h3 {
-        color: #d63384 !important; /* 濃いピンク */
+    h1 {
+        color: #d63384 !important;
+        text-align: center;
+        font-weight: bold;
     }
     .status-card {
-        background-color: rgba(255, 255, 255, 0.9); /* 白背景を少し透過 */
-        padding: 25px;
-        border-radius: 20px;
+        background-color: rgba(255, 255, 255, 0.95);
+        padding: 30px;
+        border-radius: 25px;
         border: 2px solid #ffccd5;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
     }
-    /* ボタンを押しやすく */
     .stButton>button {
         width: 100%;
-        border-radius: 10px;
+        border-radius: 15px;
+        height: 3em;
+        background-color: #ffccd5;
+        color: #d63384;
+        font-weight: bold;
+        border: none;
     }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("👶 赤ちゃんミルク記録")
-st.write("今日のミルクの合計量を記録しましょう。")
 
-# 2. ミルク量の入力（スライダー＋ボタンで使い勝手向上）
-# セッション状態を使って数値を管理（育児中の忙しいパパ向け）
+# 2. ミルク量の管理（セッション状態）
 if 'milk' not in st.session_state:
     st.session_state.milk = 400
 
@@ -52,32 +64,38 @@ with col3:
     if st.button("リセット"):
         st.session_state.milk = 0
 
-milk_amount = st.slider("現在の合計量 (ml)", 0, 1000, st.session_state.milk)
+# 最大1000mlまでに制限
+st.session_state.milk = min(st.session_state.milk, 1000)
+milk_amount = st.slider("今日の合計ミルク量 (ml)", 0, 1000, st.session_state.milk)
 st.session_state.milk = milk_amount
 
-# 3. ミルク量に応じた判定
+# 3. ミルク量に応じた画像・メッセージ判定
 if milk_amount < 200:
-    status, msg, color = "スリム期", "これからたくさん飲むよ！", "#6c757d"
-    img_url = "https://placehold.jp/24/ff9999/ffffff/300x300.png?text=Slim+Baby"
+    img_name, status, msg, color = "baby1.jpg", "スリム期", "これからたくさん飲むよ！", "#6c757d"
 elif milk_amount < 400:
-    status, msg, color = "標準期", "順調に育ってるね！", "#198754"
-    img_url = "https://placehold.jp/24/ffcc99/ffffff/300x300.png?text=Normal+Baby"
+    img_name, status, msg, color = "baby2.jpg", "標準期", "順調に育ってるね！", "#198754"
 elif milk_amount < 600:
-    status, msg, color = "ぷくぷく予備軍", "ほっぺが柔らかくなってきた？", "#fd7e14"
-    img_url = "https://placehold.jp/24/ffff99/ffffff/300x300.png?text=Puku+Puku+Step1"
+    img_name, status, msg, color = "baby3.jpg", "ぷくぷく予備軍", "ほっぺが柔らかくなってきた？", "#fd7e14"
 elif milk_amount < 800:
-    status, msg, color = "ぷくぷく期", "いい感じのぷくぷく具合！", "#dc3545"
-    img_url = "https://placehold.jp/24/ccff99/ffffff/300x300.png?text=Puku+Puku+Step2"
+    img_name, status, msg, color = "baby4.jpg", "ぷくぷく期", "いい感じのぷくぷく具合！", "#dc3545"
 else:
-    status, msg, color = "超ぷくぷく期", "最高のわがままボディです！", "#d63384"
-    img_url = "https://placehold.jp/24/99ffcc/ffffff/300x300.png?text=Max+Puku+Puku"
+    img_name, status, msg, color = "baby5.jpg", "超ぷくぷく期", "最高のわがままボディ！", "#d63384"
 
-# 4. 表示エリア
-st.markdown(f"<div class='status-card'>", unsafe_allow_html=True)
+# 4. メイン表示エリア
+st.markdown("<div class='status-card'>", unsafe_allow_html=True)
 st.markdown(f"<h2 style='color: {color};'>現在の状態：{status}</h2>", unsafe_allow_html=True)
-st.image(img_url, caption=f"ミルク累計：{milk_amount}ml", width=300)
+
+# 画像の読み込みと表示
+img_base64 = get_image_base64(img_name)
+if img_base64:
+    st.markdown(f'<img src="data:image/jpg;base64,{img_base64}" width="300" style="border-radius: 20px;">', unsafe_allow_html=True)
+else:
+    st.warning(f"画像ファイル {img_name} が見つかりません。GitHubにアップロードしてください。")
+
 st.write(f"### {msg}")
+st.write(f"合計ミルク量: **{milk_amount} ml**")
 st.markdown("</div>", unsafe_allow_html=True)
 
+# 5. フッター
 st.divider()
-st.caption("未経験パパのアプリ開発ロードマップ。背景色と文字のコントラストを改善しました。")
+st.caption("未経験パパのアプリ開発物語。奥様へのプレゼントアプリ第1弾！")
